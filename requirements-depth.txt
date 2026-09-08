@@ -1,0 +1,4 @@
+# Optional experimental relative-depth visualization only.
+-r requirements.txt
+torch==2.13.0
+transformers==5.14.1

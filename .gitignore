@@ -1,0 +1,53 @@
+# Original microscopy images and their metadata sidecars
+/pictures/
+
+# Generated analysis results
+/output/
+/outputs/
+/result_overlay.png
+/result_*.png
+
+# Local copies saved before code changes
+/backup_*/
+
+# Python environments (recreate these from requirements*.txt)
+.venv/
+.venv-*/
+venv/
+env/
+
+# Python bytecode, build files, and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.ipynb_checkpoints/
+build/
+dist/
+*.egg-info/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Local credentials and logs; keep the shareable example configuration
+.env
+.env.*
+!.env.example
+*.log
+
+# Operating-system and editor temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+*.swp
+*.swo
+*~
+
+# Keep source code, tests, documentation, example_overlay.png,
+# PowerShell launchers, and requirements*.txt in version control.

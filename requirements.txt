@@ -1,0 +1,8 @@
+# Versions exercised in the 2026-09-08 review (Python 3.12).
+numpy==2.5.1
+scipy==1.18.0
+Pillow==12.3.0
+scikit-image==0.26.0
+networkx==3.6.1
+opencv-python==5.0.0.93
+tifffile==2026.7.14
