@@ -233,7 +233,7 @@ def travel_dir(branch, end, n=10):
     return v / nn if nn else v
  
  
-def stitch_fibers(branches, zones, zone_of, connectors):
+def stitch_fibers(branches, zones, zone_of, connectors, pair_score_min=PAIR_SCORE_MIN):
     """Pair branch-ends across each zone by best straight continuation,
     then chain paired branches into individual fibers."""
     # ends of NON-connector branches attached to each zone
@@ -274,7 +274,7 @@ def stitch_fibers(branches, zones, zone_of, connectors):
         matching_graph = nx.Graph()
         for a in range(n):
             for b in range(a+1,n):
-                if S[a,b] >= PAIR_SCORE_MIN:
+                if S[a,b] >= pair_score_min:
                     matching_graph.add_edge(a,b,weight=float(S[a,b]))
         pairs = nx.max_weight_matching(matching_graph)
         for a, b in sorted(tuple(sorted(pair)) for pair in pairs):

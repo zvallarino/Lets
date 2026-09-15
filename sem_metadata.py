@@ -28,7 +28,12 @@ def quantities_um(text):
 
 def check_sidecar(image):
     image=Path(image)
-    sidecars=[p for p in image.parent.iterdir() if p.is_file() and p.suffix.lower()=='.txt' and p.stem.lower()==image.stem.lower()]
+    folders=[image.parent]
+    if image.parent.name.lower() in ('tif','tiff'):
+        check=image.parent.parent/'check'
+        if check.is_dir():folders.append(check)
+    sidecars=[p for folder in folders for p in folder.iterdir()
+              if p.is_file() and p.suffix.lower()=='.txt' and p.stem.lower()==image.stem.lower()]
     if not sidecars:return {'status':'not_available','warnings':['No matching text sidecar; automatic crop will be used.']}
     if len(sidecars)!=1:raise ValueError('Multiple matching text sidecars')
     path=sidecars[0];m,encoding,sha=read_sidecar(path)

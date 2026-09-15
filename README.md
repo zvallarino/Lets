@@ -6,6 +6,119 @@ Results are provisional and require image review. No 99% accuracy claim has been
 established. `accepted` means a measurement passed software filters, not that an
 analyst has confirmed it. `review_required` is the current image-level status.
 
+## Geometry preview in this checkout
+
+Images are in `pictures/TIFF`; matching JEOL `.txt` metadata are in
+`pictures/check`. Text files are consistency checks, not image inputs. Metadata
+may also remain beside an image; duplicate matches are rejected.
+
+A Python 3.12 environment is installed in `.venv`, including
+`requirements-depth.txt` (which includes the base requirements).
+
+```powershell
+# Run all 12 TIFFs:
+.\.venv\Scripts\python.exe run_geometry.py pictures\TIFF
+# Or one image:
+.\.venv\Scripts\python.exe run_geometry.py "pictures\TIFF\26-42#2_NF8-N30_0001.tif"
+```
+
+Results go to `output/geometry`, in a new timestamped directory. Inspect
+`source_geometry_preview.png` alongside `geometry_preview.png`. This runner
+uses Depth Anything V2 Large for visual geometry review; it does not calculate
+fiber counts or density. The older environment notes below describe the prior
+checkout, not this newly created environment.
+
+### Measurement density and quick review
+
+Defaults are 4 analysis pixels between candidates and at least 35 pixels between
+accepted red crossbars (previously 6 and 45). Both settings are recorded in
+`preview_notes.json`. Sampling increases along detected axes; it does not add
+new fiber identities. To change spacing:
+
+```powershell
+.\.venv\Scripts\python.exe run_geometry.py pictures\TIFF --sample-step 4 --crossbar-spacing 35
+```
+
+Each timestamped batch retains individual researcher folders with both annotated
+views, numeric depth, and notes. Its `quick_review` folder contains **only the
+annotated source SEM image** for each completed input, named
+`001__original.tif__source.png`, and so on. `batch_summary.csv` links to the
+researcher folder and source review copy. Failed inputs remain in the summary.
+Single-image runs put their source review copy inside the image's own folder.
+Existing historical runs are preserved; the source-only layout applies to new runs.
+
+### Source boundary checks (geometry v3)
+
+Depth proposes axes and sample seeds; red crossbars require intensity boundaries
+in the resized source SEM image. Local width changes are compared against the
+narrower section (18% tolerance with a 2-pixel floor), and track/neighbor width
+outliers against a 20% tolerance with a 2-pixel floor. Gradual changes remain
+possible. A narrow bright interior ridge repeated at a consistent position in
+four of five longitudinal profiles flags a suspected merged pair. Such widths
+are omitted, not divided into assumed individual fibers. Missing or ambiguous
+sections stay disconnected; hidden boundaries are not interpolated.
+
+`preview_notes.json` records `geometry_method`, source segmentation diagnostics,
+accepted/rejected candidate sites, analysis-pixel endpoints and widths, and
+`rejection_counts`, including `persistent_internal_seam`. Segmentation is
+diagnostic; local source evidence determines widths. These are heuristic checks
+and can omit valid fibers or miss weak seams. The maximum preview dimension is
+1600 pixels, and accepted means software-filtered, not researcher-validated.
+
+## Per-image diameter CSVs
+
+`run_geometry.py` writes `diameters.csv` inside every image's researcher folder:
+`fiber_id`, `diameter_um`, `review`. Rows are grouped by provisional fiber/track ID
+and ordered along that axis. Yellow F labels on the overlays match those IDs.
+These IDs represent geometry axes, not confirmed biological fiber identities, and
+are independent of the density module's path IDs.
+
+All numeric candidates are exported, including rejected measurable sites.
+`CHECK` means a geometry rejection, insufficient neighboring values, or a diameter
+difference exceeding 20% against the nearby same-track reference. It does not
+silently replace an outlier. `OK` means it passed software filters only.
+`diameters_audit.csv` contains positions, sample IDs, status, and reasons. The
+JSON records units and calibration. Without calibration the header explicitly
+changes to `diameter_source_px`; no physical values are invented. Widths are
+preview-resolution edge estimates converted using exact source resize factors.
+
+## Single-image density pilot (separate module)
+
+```powershell
+.\.venv\Scripts\python.exe run_density.py "pictures\TIFF\26-30_NF3-12%PVP_0004.tif" --reference-count 20 21
+```
+
+`run_density.py` does not run diameter measurements or load a depth model. It
+writes a new folder in `output/density` with `density_summary.csv`,
+`density_report.json`, `count_sensitivity.csv`, `count_candidates.csv`, and labeled
+central/minimum/maximum-count overlays. `--reference-count LOW HIGH` is an
+independent researcher reference; it never determines automated counts.
+
+The automatic range is the minimum/maximum **visible path count** across a 3x3
+sweep of segmentation and continuation settings. It is not a statistical
+confidence interval or a bound on the true fiber count. Inspect path identities,
+not just totals. Settings include `--pair-score` (default 0.55), `--pair-delta`
+(0.15), `--threshold-delta` (0.03), and `--min-visible-fraction` (0.05 of the
+analysis-image diagonal). Retained border paths are included; shorter fragments
+are excluded. IDs can change between settings and are qualified by setting ID.
+Candidate CSV reviewer fields are blank for manual annotation; they are not
+currently ingested to recompute counts.
+
+Primary density output divides counts by the cropped calibrated field area in
+square micrometers. Researcher-reference density is reported separately from
+automatic path density. Foreground area coverage and its threshold sensitivity
+are complementary 2D descriptors, not 3D density or porosity. Missing calibration
+leaves physical densities empty. This pilot uses nominal TIFF magnification
+calibration when a sidecar is unavailable; `--nm-per-px` accepts an independently
+established source-pixel calibration.
+
+On the supplied 20-21-fiber example, the first automatic sweep produced 20-57
+paths (central setting 36), with visibly incorrect crossing assignments. Thus the
+automatic counter is **not yet suitable as a final fiber count**. The reference
+20-21 corresponds to 0.1653-0.1736 fibers/um^2 at the nominal 120.9675 um^2 field
+area. One setting equaling the manual total does not validate its identities.
+Batch density and a combined command are deferred until this pilot is reviewed.
+
 ## Run from the Clement folder
 
 ```powershell
@@ -137,5 +250,3 @@ its diameter-distribution statistics from this tool's sampled median.
 Sources: [DiameterJ documentation](https://imagej.net/plugins/diameterj),
 [NIST DiameterJ](https://www.nist.gov/mml/bbd/biomaterials/diameterj),
 [Depth Anything V2 model card](https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf).
-#   L e t s  
- 
