@@ -1,4 +1,4 @@
-"""Single-image visible-path density pilot; review identities before batch use.
+"""Visible-path density analysis; also called per image by the full batch runner.
 
 Automatic ranges describe sensitivity to segmentation and continuation settings,
 not confidence bounds on the true fiber count. A manual reference is independent.
@@ -123,6 +123,8 @@ def analyze_density(image,outdir='output/density',max_dim=1600,crop_bottom=None,
         'range_definition':'Minimum and maximum across listed settings; NOT a confidence interval or bound on true fiber count.',
         'geometry':transform,'metadata_check':metadata,'calibration':calibration,'nm_per_source_pixel_xy':nm_xy,
         'analyzed_area_um2':area,'automatic_path_count':central['path_count'],
+        'automatic_paths_per_um2':central['path_count']/area if area else None,
+        'automatic_paths_per_megapixel':central['path_count']/(roi[2]*roi[3])*1e6,
         'automatic_count_low':lo,'automatic_count_high':hi,'automatic_paths_per_um2_low':dlo,'automatic_paths_per_um2_high':dhi,
         'foreground_coverage_pct':central['foreground_coverage_pct'],
         'foreground_coverage_low_pct':min(s['foreground_coverage_pct'] for s in settings),

@@ -1,252 +1,225 @@
-# SEM fiber analysis — reviewed revision
+# SEM fiber analysis
 
-This revision integrates calibration, banner removal, segmentation, path tracing,
-local crossing cues, axes, repeated diameter measurements, and density reporting.
-Results are provisional and require image review. No 99% accuracy claim has been
-established. `accepted` means a measurement passed software filters, not that an
-analyst has confirmed it. `review_required` is the current image-level status.
+## Run everything
 
-## Geometry preview in this checkout
-
-Images are in `pictures/TIFF`; matching JEOL `.txt` metadata are in
-`pictures/check`. Text files are consistency checks, not image inputs. Metadata
-may also remain beside an image; duplicate matches are rejected.
-
-A Python 3.12 environment is installed in `.venv`, including
-`requirements-depth.txt` (which includes the base requirements).
-
-```powershell
-# Run all 12 TIFFs:
-.\.venv\Scripts\python.exe run_geometry.py pictures\TIFF
-# Or one image:
-.\.venv\Scripts\python.exe run_geometry.py "pictures\TIFF\26-42#2_NF8-N30_0001.tif"
-```
-
-Results go to `output/geometry`, in a new timestamped directory. Inspect
-`source_geometry_preview.png` alongside `geometry_preview.png`. This runner
-uses Depth Anything V2 Large for visual geometry review; it does not calculate
-fiber counts or density. The older environment notes below describe the prior
-checkout, not this newly created environment.
-
-### Measurement density and quick review
-
-Defaults are 4 analysis pixels between candidates and at least 35 pixels between
-accepted red crossbars (previously 6 and 45). Both settings are recorded in
-`preview_notes.json`. Sampling increases along detected axes; it does not add
-new fiber identities. To change spacing:
-
-```powershell
-.\.venv\Scripts\python.exe run_geometry.py pictures\TIFF --sample-step 4 --crossbar-spacing 35
-```
-
-Each timestamped batch retains individual researcher folders with both annotated
-views, numeric depth, and notes. Its `quick_review` folder contains **only the
-annotated source SEM image** for each completed input, named
-`001__original.tif__source.png`, and so on. `batch_summary.csv` links to the
-researcher folder and source review copy. Failed inputs remain in the summary.
-Single-image runs put their source review copy inside the image's own folder.
-Existing historical runs are preserved; the source-only layout applies to new runs.
-
-### Source boundary checks (geometry v3)
-
-Depth proposes axes and sample seeds; red crossbars require intensity boundaries
-in the resized source SEM image. Local width changes are compared against the
-narrower section (18% tolerance with a 2-pixel floor), and track/neighbor width
-outliers against a 20% tolerance with a 2-pixel floor. Gradual changes remain
-possible. A narrow bright interior ridge repeated at a consistent position in
-four of five longitudinal profiles flags a suspected merged pair. Such widths
-are omitted, not divided into assumed individual fibers. Missing or ambiguous
-sections stay disconnected; hidden boundaries are not interpolated.
-
-`preview_notes.json` records `geometry_method`, source segmentation diagnostics,
-accepted/rejected candidate sites, analysis-pixel endpoints and widths, and
-`rejection_counts`, including `persistent_internal_seam`. Segmentation is
-diagnostic; local source evidence determines widths. These are heuristic checks
-and can omit valid fibers or miss weak seams. The maximum preview dimension is
-1600 pixels, and accepted means software-filtered, not researcher-validated.
-
-## Per-image diameter CSVs
-
-`run_geometry.py` writes `diameters.csv` inside every image's researcher folder:
-`fiber_id`, `diameter_um`, `review`. Rows are grouped by provisional fiber/track ID
-and ordered along that axis. Yellow F labels on the overlays match those IDs.
-These IDs represent geometry axes, not confirmed biological fiber identities, and
-are independent of the density module's path IDs.
-
-All numeric candidates are exported, including rejected measurable sites.
-`CHECK` means a geometry rejection, insufficient neighboring values, or a diameter
-difference exceeding 20% against the nearby same-track reference. It does not
-silently replace an outlier. `OK` means it passed software filters only.
-`diameters_audit.csv` contains positions, sample IDs, status, and reasons. The
-JSON records units and calibration. Without calibration the header explicitly
-changes to `diameter_source_px`; no physical values are invented. Widths are
-preview-resolution edge estimates converted using exact source resize factors.
-
-## Single-image density pilot (separate module)
-
-```powershell
-.\.venv\Scripts\python.exe run_density.py "pictures\TIFF\26-30_NF3-12%PVP_0004.tif" --reference-count 20 21
-```
-
-`run_density.py` does not run diameter measurements or load a depth model. It
-writes a new folder in `output/density` with `density_summary.csv`,
-`density_report.json`, `count_sensitivity.csv`, `count_candidates.csv`, and labeled
-central/minimum/maximum-count overlays. `--reference-count LOW HIGH` is an
-independent researcher reference; it never determines automated counts.
-
-The automatic range is the minimum/maximum **visible path count** across a 3x3
-sweep of segmentation and continuation settings. It is not a statistical
-confidence interval or a bound on the true fiber count. Inspect path identities,
-not just totals. Settings include `--pair-score` (default 0.55), `--pair-delta`
-(0.15), `--threshold-delta` (0.03), and `--min-visible-fraction` (0.05 of the
-analysis-image diagonal). Retained border paths are included; shorter fragments
-are excluded. IDs can change between settings and are qualified by setting ID.
-Candidate CSV reviewer fields are blank for manual annotation; they are not
-currently ingested to recompute counts.
-
-Primary density output divides counts by the cropped calibrated field area in
-square micrometers. Researcher-reference density is reported separately from
-automatic path density. Foreground area coverage and its threshold sensitivity
-are complementary 2D descriptors, not 3D density or porosity. Missing calibration
-leaves physical densities empty. This pilot uses nominal TIFF magnification
-calibration when a sidecar is unavailable; `--nm-per-px` accepts an independently
-established source-pixel calibration.
-
-On the supplied 20-21-fiber example, the first automatic sweep produced 20-57
-paths (central setting 36), with visibly incorrect crossing assignments. Thus the
-automatic counter is **not yet suitable as a final fiber count**. The reference
-20-21 corresponds to 0.1653-0.1736 fibers/um^2 at the nominal 120.9675 um^2 field
-area. One setting equaling the manual total does not validate its identities.
-Batch density and a combined command are deferred until this pilot is reviewed.
-
-## Run from the Clement folder
+From `C:\Users\zvallarino\code\clement` in PowerShell:
 
 ```powershell
 .\run.ps1
-# Or specify inputs and output folder:
-.\run.ps1 pictures\TIFF -o output\review
+# Explicit folder and output location:
+.\run.ps1 ".\pictures\TIFF" -o ".\output\full_review"
+# One image:
+.\run.ps1 ".\pictures\TIFF\26-30_NF3-12%PVP_0004.tif"
 ```
 
-The existing `.venv` points to a missing Microsoft Store Python installation.
-The launcher first checks it, then uses the installed Codex Python 3.12 runtime
-with the existing 3.12 packages. It does not repair or modify the old environment.
-For a portable installation, install Python 3.12 and create a fresh environment:
+The full runner performs metadata/calibration checks, banner removal, Depth
+Anything V2 **Large**, native-pixel-checked axes and diameters, independent non-AI diameter measurement, visible-path counting,
+and density/coverage analysis. It uses the current `run_geometry.py` and
+`classical_diameter.py`, and `run_density.py`, not the old combined geometry algorithm. Folders are scanned
+non-recursively for `.tif` and `.tiff`; TXT files are not processed as images.
+Multiple inputs are supported and duplicate image paths are removed.
+
+`run.ps1` launches `run_pipeline.py`, whose CLI delegates to `run_all.py`.
+With a working Python environment, the equivalent command is:
 
 ```powershell
-py -3.12 -m venv .venv-review
-.\.venv-review\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv-review\Scripts\python.exe run_pipeline.py pictures\TIFF -o output\review
-.\.venv-review\Scripts\python.exe -m unittest discover -v
+python run_pipeline.py pictures/TIFF -o output/full_review
 ```
-Dependency versions record the environment exercised during this review. A new
-installation and other platforms have not been tested. Torch/Transformers are
-optional and listed separately in `requirements-depth.txt`.
 
-## Parameters and measurement definitions
+The old `--depth-model large` command still works. Large is now the fixed default,
+with model revision `7581137eff8d4e94f6e796d3baea0e9fa79b22d2`; Small/Base are
+not substituted. The model is cached across images. The count sensitivity sweep
+adds work per image, so the full pipeline takes longer than geometry alone.
+
+## Results
+
+Each run creates a new `output/full_review/batch_<timestamp>` folder:
+
+- `batch_summary.csv`: one row per input, geometry measurement totals/review,
+  non-AI measurement totals and method agreement, central path count, sensitivity range, density, coverage, errors, and output links.
+- `manifest.json`: inputs, options, model revision, environment/dependency versions,
+  and Python/launcher source hashes.
+- `quick_review`: `__geometry.png`, `__non_ai.png`, `__segmentation.png`, and `__count.png` review images.
+- `001__<image>/geometry/<timestamp>/`: current geometry outputs.
+- `001__<image>/non_ai/<timestamp>/`: independent diameters, segmentation, and method comparison.
+- `001__<image>/density/<timestamp>/`: count/density outputs.
+- `001__<image>/image_summary.json`: combined per-image result.
+
+Geometry files include `geometry_preview.png`, `source_geometry_preview.png`,
+`large_depth.npy`, `preview_notes.json`, `diameters.csv`, `diameters_audit.csv`,
+`diameters_ok.csv`, `measurement_summary.csv`, `review_reasons.csv`, and
+`REVIEW_README.txt`. Use `diameters_ok.csv` for software-accepted widths;
+`diameters.csv` also retains measurable rejected candidates for review.
+Widths use micrometers when calibration is available, otherwise explicit source
+pixel units. The audit includes coordinates, provisional track IDs, and reasons.
+
+Density files include `density_summary.csv`, `density_report.json`,
+`count_sensitivity.csv`, `count_candidates.csv`, `count_overlay.png`,
+`count_low_overlay.png`, `count_high_overlay.png`, and `READ_ME.txt`.
+
+The batch summary is saved between geometry, non-AI measurement, and density for each picture.
+An exception in one stage does not prevent the other stage or later images from
+running. `status=partial` means some stages completed; `failed` means none completed. Copy errors are reported separately. Nonzero exit status indicates
+an execution/output failure. Low measurement totals are review flags, not crashes.
+
+## Interpret review, count, and density
+
+`completed` means processing finished, not that an analyst verified accuracy.
+`measurements_total` includes all numerical widths exported; `measurements_ok`
+passed the software checks and `measurements_check` require review. Red lines
+are a spaced subset of final OK widths after native-pixel and neighbor review,
+so their count can be lower than the number of OK measurements.
+
+`review_status` is `no_ok_measurements`, `below_target`, or `target_reached`.
+The default target is 100 OK cross-sections per image; reaching it is not a
+validation criterion. Multiple sections on one track are not independent fibers.
+`review_reasons.csv` explains rejected widths and separately lists geometry
+candidate rejections. A width can have several reasons; do not add these counts
+as though they were unique measurements.
+
+The count module estimates visible stitched paths. Geometry F IDs and count P IDs
+are independent and must not be joined as though they identify the same fibers.
+The central count uses the default setting. The low/high range is the minimum
+and maximum over a 3-by-3 sweep of segmentation and continuation settings, **not
+a confidence interval**. Path IDs can change between settings. Inspect the
+labeled overlays for split, merged, duplicate, or missed paths. Retained border
+paths count; paths shorter than the configured visible-length threshold do not.
+Blank researcher fields in `count_candidates.csv` support manual review; edits
+are not automatically applied to the count.
+
+Physical density is visible paths divided by the cropped field area in square
+micrometers. `automatic_paths_per_megapixel` uses the cropped **source** pixel
+area, so its value depends on acquisition resolution. Coverage is projected
+foreground area percentage; neither measurement is mass density or 3D porosity.
+Missing calibration leaves physical density empty. The count module always
+reports `researcher_review_required`, even if the diameter target was reached.
+
+The counter remains experimental: an earlier manually counted 20–21-fiber image
+produced a 20–57 automatic path range with incorrect crossing assignments. Batch
+integration does not establish count accuracy. The Large model proposes relative
+depth; it does not establish validated physical heights or definitive crossing
+order. Ambiguous/hidden boundaries are omitted. No 99% accuracy claim is made.
+
+## Inputs and calibration
+
+Original TIFFs belong in `pictures/TIFF`. Matching JEOL TXT metadata may sit beside
+the image or in `pictures/check`; duplicate matches are rejected. Text metadata
+check image dimensions, calibration information and banner crop. Conflicting
+explicit crop settings fail rather than silently overriding metadata. When a
+sidecar is absent, the modules use their recorded TIFF magnification/reference
+calibration if available. Nominal calibration should be checked independently.
+Site discovery and non-AI segmentation use a maximum image dimension of 1600 pixels.
+Geometry rechecks proposed edges by sampling the original TIFF at native resolution,
+with the smoothing footprint and review tolerances preserved in analysis coordinates. Fine fibers in
+wide fields can become too narrow to measure reliably; more red lines or a higher
+sampling target does not fix this.
+
+## Settings and individual stages
 
 ```powershell
-# Explicit crop and independently established calibration:
-python run_pipeline.py image.tif --crop-bottom 256 --nm-per-px 2.48046875
-# Recorded segmentation override (grayscale intensity from 0 to 1):
-python run_pipeline.py image.tif --threshold 0.15
-# More tracing resolution; diameters already use native-resolution pixels:
-python run_pipeline.py image.tif --max-dim 2400 --max-samples 500
+# Full run: target is a reporting threshold, not a quota forced into geometry
+.\run.ps1 pictures\TIFF --target-measurements 100 --threads 4
+# Geometry only
+.\run_geometry.ps1 pictures\TIFF
+# Count/density only, using a working Python environment
+python run_density.py "pictures\TIFF\26-30_NF3-12%PVP_0004.tif"
 ```
 
-- **Estimated visible paths/image:** traced fiber paths after stitching and
-  length filtering. Edge fragments are included. Splits, merged fibers, hidden
-  segments, and touching fibers make this an estimate rather than a true count.
-- **Paths/µm²:** estimated paths divided by the cropped field's physical area.
-  Compare images acquired at the same field size/magnification: even normalized
-  counts depend on field boundaries and the visibility of underlying fibers.
-- **Paths/megapixel:** the same estimate divided by original cropped pixels and
-  multiplied by one million. This is not invariant to magnification or resampling.
-- **Coverage (%):** foreground fraction in the analysis mask, a separate 2D
-  measure. It is not volume fraction, mass density, or 3D porosity.
-- **Diameter:** native-pixel, perpendicular edge-to-edge distance at systematically
-  spaced visible locations. Both sides must leave the mask into background with
-  adequate contrast. Unmeasurable locations are retained with rejection reasons.
-  The summary is the median of accepted cross-sections, not a fiber-weighted
-  population mean. Visible isolated fibers can be sampled preferentially.
-- **Axis:** global principal direction per reconstructed path, and a local
-  direction per diameter location, in degrees modulo 180 from the image x-axis.
-  Image y increases downward. Curved paths do not have one constant local axis.
-- **Order:** local intensity/occlusion cues, with weak cases left unresolved.
-  Scores are heuristic cue separation, not probabilities. There is no assumed
-  global stack order: flexible fibers can weave over and under each other.
+Full-run geometry controls: `--nearest` (15), `--sample-step` (4 analysis pixels),
+`--crossbar-spacing` (6 analysis pixels), `--target-measurements` (100).
+Count controls: `--pair-score` (0.55), `--pair-delta` (0.15),
+`--threshold-delta` (0.03), `--min-visible-fraction` (0.05 of image diagonal).
+`--crop-bottom` applies to both stages; `--threads` controls Torch CPU threads.
+The count module itself additionally supports an independent
+`--reference-count LOW HIGH` and `--nm-per-px` for a single image. Those overrides
+are not accepted by the full runner, avoiding accidental application of a single
+image's count or calibration to an entire folder.
 
-Calibration uses the existing JEOL 127 mm reference and original image width.
-Confirm it independently against an actual scale bar or instrument calibration.
-A missing calibration leaves physical fields empty; no silent 1 nm/pixel default.
-The original 5120 × 4096 inputs in this review crop to 5120 × 3840. Calibration
-always refers to original pixels. Crop/resize transforms are recorded explicitly.
+Geometry requires stable source boundaries, checks center shifts, missing edges,
+local width changes, merged seams and track outliers. Export checks flag widths
+that differ from neighboring measurements by more than 20%, or lack sufficient
+neighbors. These are heuristic checks that can reject valid sections or accept
+incorrect ones. Consult `preview_notes.json` and the source overlay.
 
-## Output in a new timestamped run directory
+## Independent non-AI measurement and accuracy checks
 
-`summary.csv` contains one row per input, including errors. `manifest.json`
-records configuration, Python/package versions, and source hashes. Each image has:
+Every full run now includes `classical_diameter.py`. It selects sites independently
+of the depth model using a binary source-image mask, skeleton centerlines, local
+orientation, and distance maps. It measures interpolated mask boundaries along a
+perpendicular section, rather than rounding twice the integer distance-map radius.
+The threshold is midway between background and bright-class median intensities;
+this avoids a background-edge threshold bias found in the synthetic tests. It is
+an experimental implementation inspired by classical methods, **not DiameterJ**.
 
-- `report.json`: source SHA-256, calibration, ROI, exact resize factors, thresholds,
-  mask sensitivity, metric definitions, and review flags.
-- `diameters.csv`: accepted and rejected sites, endpoint coordinates in original
-  pixels, units, local axes, and contrast/coherence values.
-- `fibers.csv`, `centerlines.csv`, `crossings.csv`: reconstructed paths and cues.
-- `review_overlay.png`: path labels and red accepted diameter segments.
-- `cropped_analysis.png`, `fiber_mask.png`, `native_fiber_mask.png`: image and masks.
-  White in a binary mask means fiber. Native mask is written when measurements run.
-- `manual_reference_template.csv`: sample locations with blank analyst/session/
-  reference-diameter fields, deliberately omitting automated values.
+A candidate needs stable boundaries under threshold changes of +/-0.03 and stable
+neighboring sections. Widths below 10 analysis pixels, crossings, endpoints,
+ambiguous directions, off-center sections, weak contrast, and internal seams are
+excluded. Crossings are excluded within 1.25 local widths. These are documented
+heuristics, not calibrated uncertainty limits. The seam rejection helper is shared
+with geometry; the two methods are not fully independent sources of truth.
 
-Do not process colored overlays as inputs. Supply original grayscale images.
-Automatic segmentation separates three intensity classes (background, dim fiber
-bodies, bright rims) and retains the upper two. This is an unvalidated heuristic,
-not a universal solution. Binary Otsu and Triangle coverage are retained as
-sensitivity checks, with disagreement flags. Review the saved masks.
-The minimum path length and sampling spacing are analysis-pixel parameters;
-freeze resolution/settings in any comparison study. Under-resolved tracing is flagged.
+Files in `non_ai`:
 
-## Optional depth visualization
+- `non_ai_measurements.csv`: sampled candidates, widths where measurable, status and reasons.
+- `non_ai_ok.csv`: only accepted non-AI widths.
+- `non_ai_overlay.png`: accepted red widths and local blue axis marks.
+- `segmentation_mask.png` and `segmentation_overlay.png`: the actual mask and its boundaries.
+- `non_ai_report.json`: settings, coordinates, calibration, rejection reasons and statistics.
+- `non_ai_histogram.csv`: diameter distribution, when accepted measurements exist.
+- `method_comparison.csv`: checks at exactly the geometry method's final OK locations.
+- `cross_checked_measurements.csv`: only same-location agreements. Widths here are explicitly source pixels.
+
+Comparison is `agree`, `disagree`, or `not_comparable`. Agreement requires no more
+than 10% relative width difference (using the mean width as denominator) AND
+agreement of both edge positions within 10% of the geometry width, with a one
+analysis-pixel floor. An unresolved section is never counted as agreement. The
+batch columns `method_agree`, `method_disagree`, and `method_not_comparable` count
+these categories. When geometry fails, the non-AI method still runs, but there is
+no geometry comparison. Do not pool the methods' rows: sites can overlap and
+sampling populations differ. Neither method's OK label is analyst confirmation.
+
+Geometry v4 rechecks previously accepted sections on original TIFF pixels. The
+sampling coordinate transform preserves pixel-center alignment and anisotropic
+resize factors. Native verification uses the same physical smoothing scale and
+review tolerances as the preview, avoiding spurious changes caused by pixel scale.
+It interpolates gradient peaks, records original preview endpoints, and rejects
+unresolved or substantially changed widths. It never promotes a previously
+rejected candidate. Final red lines now correspond to final OK CSV measurements.
+
+The non-AI method can run without Torch or a depth model:
 
 ```powershell
-python run_pipeline.py image.tif --depth-model small --depth-revision 5426e4f0f36572d16453bbda7a8389317b1bef99
+python classical_diameter.py "pictures/TIFF/image.tif"
+# Optional same-location comparison with a completed geometry output folder:
+python classical_diameter.py "pictures/TIFF/image.tif" --geometry-output "output/geometry/<image_result>"
 ```
 
-The model runs on the unpainted cropped image and saves floating-point relative
-depth plus model revision metadata. It is not used as measurement truth or to
-force a crossing order. The cached Small model was executed successfully during
-review; this does not validate its SEM predictions. A missing model may require
-a first download. Model failure is recorded without discarding conventional
-measurements. Standalone `top_fiber_depth.py` remains available for highlighting.
+Known-width, rotated, adjacent, crossing, bright-rim, low-contrast, blank, and
+underresolved synthetic cases are tested, along with native coordinate scaling
+and method-comparison states. Real-image smoke tests demonstrate execution and
+reviewability, not a measured clinical/QC accuracy rate. Very dense wide-field
+images may still produce no accepted measurements. Increasing a sampling quota
+cannot recover boundaries absent at the analysis resolution.
 
-## Manual / DiameterJ comparison
+## Python setup, portability, and tests
 
-Use original TIFFs in Fiji/ImageJ with independently checked calibration. Give
-analysts the source image and location template, without automated overlays or
-diameters. Have them record perpendicular edge-to-edge diameters in nm, analyst
-ID, and session. Combine completed rows into a reference CSV and run:
+The PowerShell launchers first try `.venv\Scripts\python.exe`. If it is broken,
+they try the locally installed Codex Python 3.12 runtime with existing project
+packages. That fallback may not exist on another computer. For a portable setup:
 
 ```powershell
-python compare_reference.py output/review/run_TIMESTAMP references.csv -o comparison --tolerance-pct 10
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-depth.txt
+.\run.ps1
+.\.venv\Scripts\python.exe -m unittest discover -v
 ```
 
-The 10% tolerance is an example, not a validated acceptance criterion. The tool
-reports paired errors and analyst-specific descriptive bias/agreement; it rejects
-duplicate readings and unmatched sites. Use only the matching run: sample IDs
-can change with settings. Repeat readings must have distinct session IDs.
+The first Large-model run needs the model weights available locally or a download.
+Pictures, outputs, model caches, and virtual environments are ignored by Git;
+copy original TIFF/TXT data separately when moving computers. Do not expect a
+Git clone to include the images or model weights.
 
-Paired accepted sites test diameter placement but miss selection/detection bias.
-Also use independently selected fields/sites, consensus path/crossing annotations,
-and reference wires/digital phantoms. Freeze field selection, crop, calibration,
-segmentation settings, endpoint conventions, versions, and rejection rules before
-a held-out study. Include different concentrations, magnifications, days, analysts,
-and microscopes/labs. Report rejection rate alongside measurement error; abstaining
-on difficult cases cannot be counted as 99% successful automated analysis.
-
-DiameterJ is a relevant independent semi-automated comparator. Its published
-validation does not transfer automatically to these specimens and settings.
-Use matched fields and units, retain its segmentation choices, and distinguish
-its diameter-distribution statistics from this tool's sampled median.
-
-Sources: [DiameterJ documentation](https://imagej.net/plugins/diameterj),
-[NIST DiameterJ](https://www.nist.gov/mml/bbd/biomaterials/diameterj),
-[Depth Anything V2 model card](https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf).
+`run_pipeline.Config` and `analyze_one` remain importable for historical tests and
+comparisons. They are not the current CLI path. `REVIEW.md` records the historical
+review and proposed validation work; manual comparisons still require a separate
+reference protocol.

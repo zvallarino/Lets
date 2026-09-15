@@ -6,16 +6,19 @@ from sem_image import segment
 
 
 class SourceBoundaryCheck:
-    def __init__(self, gray):
-        self.mask, self.segmentation = segment(gray, return_info=True)
-        self.sm = ndi.gaussian_filter(gray, 1)
+    def __init__(self, gray, diagnostics=True, interpolate=False, sample_scale=(1.,1.)):
+        self.mask, self.segmentation = segment(gray, return_info=True) if diagnostics else (None,None)
+        self.interpolate=interpolate
+        self.sample_scale=np.asarray(sample_scale,dtype=float)
+        self.shape=np.asarray(gray.shape)/self.sample_scale
+        self.sm = ndi.gaussian_filter(gray, self.sample_scale)
 
     def measure(self, point, tangent, half_width):
         # SEM fibers have bright rims and darker cores. Use the first supported
         # outward intensity fall, rather than requiring empty background in a
         # global mask (underlying fibers often occupy that background).
         normal = np.array([-tangent[1], tangent[0]])
-        h, w = self.sm.shape
+        h, w = self.shape
         ts = np.arange(0., max(12., 1.7*half_width)+5., .5)
         r,c=np.round(point).astype(int)
         if not (0<=r<h and 0<=c<w):return None
@@ -26,7 +29,7 @@ class SourceBoundaryCheck:
             if (coords[0].min()<1 or coords[0].max()>=h-2 or
                     coords[1].min()<1 or coords[1].max()>=w-2):
                 return None
-            profile=ndi.map_coordinates(self.sm,coords,order=1)
+            profile=ndi.map_coordinates(self.sm,(coords+.5)*self.sample_scale[:,None]-.5,order=1)
             profile=ndi.gaussian_filter1d(profile,1.)
             gradient=np.gradient(profile,.5)
             peaks,_=find_peaks(-gradient,height=.004,prominence=.004)
@@ -41,7 +44,12 @@ class SourceBoundaryCheck:
                 if contrast<.025:
                     continue
                 body_supported |= profile[0] > profile[i:hi].min()+.015
-                edge=np.asarray(point)+direction*ts[i]
+                travel=ts[i]
+                if self.interpolate and 0<i<len(gradient)-1:
+                    curvature=gradient[i-1]-2*gradient[i]+gradient[i+1]
+                    if abs(curvature)>1e-12:
+                        travel+=.5*float(np.clip(.5*(gradient[i-1]-gradient[i+1])/curvature,-.5,.5))
+                edge=np.asarray(point)+direction*travel
                 break
             if edge is None:return None
             edges.append(edge)
@@ -67,10 +75,10 @@ class SourceBoundaryCheck:
         span=max(10.,.6*width)
         for offset in np.linspace(-span,span,5):
             coords=mid[:,None]+normal[:,None]*xs+tangent[:,None]*offset
-            if (coords[0].min()<1 or coords[0].max()>=self.sm.shape[0]-2 or
-                    coords[1].min()<1 or coords[1].max()>=self.sm.shape[1]-2):
+            if (coords[0].min()<1 or coords[0].max()>=self.shape[0]-2 or
+                    coords[1].min()<1 or coords[1].max()>=self.shape[1]-2):
                 return False
-            profile=ndi.map_coordinates(self.sm,coords,order=1)
+            profile=ndi.map_coordinates(self.sm,(coords+.5)*self.sample_scale[:,None]-.5,order=1)
             peaks,props=find_peaks(profile,prominence=.045)
             candidates=[]
             for i,prominence in zip(peaks,props['prominences']):
