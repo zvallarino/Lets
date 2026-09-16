@@ -6,7 +6,7 @@ $projectPackages = Join-Path $PSScriptRoot '.venv\Lib\site-packages'
 $pipelineScript = Join-Path $PSScriptRoot 'run_pipeline.py'
 $pipelineArguments = @($args)
 if ($pipelineArguments.Count -eq 0) {
-    $pipelineArguments = @((Join-Path $PSScriptRoot 'pictures\TIFF'), '-o', (Join-Path $PSScriptRoot 'output\review'))
+    $pipelineArguments = @((Join-Path $PSScriptRoot 'pictures\TIFF'), '-o', (Join-Path $PSScriptRoot 'output\full_review'))
 }
 $usable = $false
 if (Test-Path -LiteralPath $projectPython) {

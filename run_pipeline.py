@@ -1,6 +1,9 @@
 """Reproducible SEM fiber batch analysis; results require image review.
 
-python run_pipeline.py pictures/TIFF -o output/review
+python run_pipeline.py pictures/TIFF -o output/full_review
+
+CLI delegates to run_all: current Large geometry, non-AI diameters, and count/density modules.
+Older Config/analyze_one APIs below remain for regression compatibility.
 """
 import argparse
 import csv
@@ -262,7 +265,7 @@ def analyze_one(path, outdir, cfg):
     return result
 
 
-def main():
+def legacy_main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('inputs',nargs='+');p.add_argument('-o','--outdir',default='output/review')
     p.add_argument('--max-dim',type=int,default=1600);p.add_argument('--crop-bottom',type=int)
@@ -300,6 +303,12 @@ def main():
         print(json.dumps(result),flush=True)
     print(f'Results: {run.resolve()}',flush=True)
     return 1 if failures else 0
+
+
+def main():
+    # One current implementation for the CLI; legacy analysis APIs remain importable.
+    from run_all import main as current_main
+    return current_main()
 
 
 if __name__=='__main__':

@@ -1,4 +1,5 @@
-# Optional experimental relative-depth visualization only.
+# Required for the full pipeline and geometry runner (Large relative-depth model).
 -r requirements.txt
 torch==2.13.0
 transformers==5.14.1
+

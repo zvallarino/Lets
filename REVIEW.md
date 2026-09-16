@@ -1,3 +1,25 @@
+# Accuracy implementation update — 15 September 2026
+
+The full runner now adds independent classical diameter sampling, explicit mask
+review, and same-location comparisons. Geometry v4 samples original TIFF pixels
+with physical smoothing/coordinate scale preserved and renders final OK sites.
+The first native trial used mismatched pixel scales and was discarded after real
+image checks; the installed implementation preserves the original footprint.
+Synthetic tests found and corrected a roughly three-pixel threshold bias in the
+initial classical implementation. No real-image percentage accuracy is inferred
+from those tests. See README.md for current outputs, definitions and limitations.
+
+# Integration update — 15 September 2026
+
+The supported full command is now `run.ps1`, which delegates through
+`run_pipeline.main` to `run_all.main`. It calls the current Large-model geometry
+and separate visible-path density modules, preserving their audit outputs.
+Per-stage failures, measurement sufficiency and count review are separate fields.
+See README.md for commands and output definitions. The integration does not
+validate crossing identities, counts, or physical accuracy. The review below is
+a historical record; its original combined algorithm is retained only as an
+importable API for regression comparisons.
+
 # Code review — 8 September 2026
 
 All five original Python files, the README, requirements, and all 13 starting
